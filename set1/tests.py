@@ -11,6 +11,7 @@ import git
 import requests
 import ruamel.yaml as yaml
 from colorama import Fore, Style
+from PIL import Image
 
 aboutMeData = ""
 
@@ -77,7 +78,7 @@ def test_for_python_and_requests(repo_path: str) -> bool:
     gh_url = "https://raw.githubusercontent.com/"
     check_repo = "notionparallax/code1161base/"
     file_path = f"master/week{SET_NUMBER}/pySuccessMessage.json"
-    url = gh_url + check_repo + file_path
+    url = f"{gh_url}{check_repo}{file_path}"
 
     try:
         r = requests.get(url)
@@ -108,7 +109,7 @@ def test_for_python_and_requests(repo_path: str) -> bool:
     p = os.path.join(repo_path, f"set{SET_NUMBER}", "requestsWorking.txt")
     with open(p, "w", encoding="utf-8") as f:
         for line in doesItWork:
-            f.write(line + "\n")
+            f.write(f"{line}\n")
 
     return True
 
@@ -116,10 +117,21 @@ def test_for_python_and_requests(repo_path: str) -> bool:
 def test_hello_world(repo_path: str) -> bool:
     exercise1 = loadExerciseFile(repo_path, setNumber=SET_NUMBER, exerciseNumber=1)
     source = "".join(inspect.getsourcelines(exercise1)[0])
+    if "print('Hello world!')" in source or 'print("Hello world!")':
+        print("that's exactly right!, nice one.")
+        return True
     if (
+        # TODO: probably get a regex in here
         "print('hello world!')" in source.lower()
         or 'print("hello world!")' in source.lower()
+        or 'print ("hello world!")' in source.lower()
+        or "print ('hello world!')" in source.lower()
     ):
+        print(
+            "This is close enough, it passes, but it's not "
+            "EXACTLY right, and sometimes it really matters "
+            "what you write. Be pedantic!"
+        )
         return True
     else:
         print(
@@ -151,26 +163,48 @@ def test_dev_env() -> bool:
     return False
 
 
+# def str_dict_vals(d):
+#     if hasattr(d, "keys"):
+#         for k in d:
+#             if hasattr(d[k], "keys"):
+#                 str_dict_vals(dict(d[k]))
+#             else:
+#                 d[k] = str(d[k])
+#         return dict(d)
+#     else:
+#         return d
+
+
 def test_aboutMe(repo_path, show=False) -> bool:
     """Test to see if aboutMe.yml is updated"""
-    f = open(os.path.join(repo_path, "aboutMe.yml"), "r")
-    them = dict(yaml.load(f, yaml.RoundTripLoader))
+    file_path = os.path.join(repo_path, "aboutMe.yml")
+    if not os.path.isfile(file_path):
+        print(
+            "this is very strange, have you deleted "
+            "aboutMe.yml or renamed is? Don't do that!"
+        )
+        return False
+    f = open(file_path, "r", encoding="utf8", errors="ignore")
+    them = yaml.load(f, yaml.RoundTripLoader)
+    # them = str_dict_vals(yaml.load(f, yaml.RoundTripLoader))
     global aboutMeData
     aboutMeData = them
     if show:
         print(json.dumps(them, indent=2, sort_keys=True))
-    if (
-        them.get("name", "") == "Your Name"
-        or them.get("studentNumber", "") == "z1234567"
-        or them.get("officialEmail", "") == "noIdea@unsw.edu.au"
-        or them.get("stackOverflowLink", "")
-        == "https://stackoverflow.com/users/1835727/ben"
-        or them.get("github", "") == "notionparallax"
-    ):
-        print("You haven't updated your aboutMe.yml yet.")
+    xx = "a very unexpected string"
+    checks = [
+        them.get("name", xx) == "Your Name",
+        them.get("studentNumber", xx) == "z1234567",
+        them.get("officialEmail", xx) == "noIdea@unsw.edu.au",
+        "1835727/ben" in them.get("stackOverflowLink", xx),
+        them.get("github", xx) == "notionparallax",
+    ]
+    if any(checks):
+        print("You haven't updated all of your aboutMe.yml yet.")
         return False
-    else:
-        return True
+    if all(checks):
+        print("you haven't started on your aboutMe.yml yet.")
+    return True
 
 
 def get_origin_url(repo) -> str:
@@ -191,7 +225,9 @@ def me_repo_is_clone(repo_path) -> bool:
     if "Design-Computing" in origin_url:
         print(
             (
-                "You seem to be running on the master copy of the {em}me{norm} repo."
+                "You seem to be running on the source copy of the {em}me{norm} repo."
+                "\nIt looks like you've cloned {em}design-computing/me{norm}"
+                "\nyou should have cloned {em}[your_github_name]/me{norm}"
                 "\nYou need to be working with your clone."
                 "\nThis is hard to explain in an error message, call a tutor over."
             ).format(em=EM, norm=NORM)
@@ -216,6 +252,68 @@ def has_pushed(fileName, repo_path) -> bool:
     except Exception as e:
         print("TODO: write an error message here", e)
         return False
+
+
+def has_real_photo(repo_path):
+    repo = git.cmd.Git(repo_path)
+    origin_url = get_origin_url(repo)
+    owner = origin_url.split("/")[3]
+    image_url = f"https://github.com/{owner}.png?size=40"
+    img_data = requests.get(image_url).content
+    file_name = "avatar.jpg"
+    with open(file_name, "wb") as handler:
+        handler.write(img_data)
+
+    image = Image.open(file_name)
+    colour_count = len(set(image.getdata()))
+
+    if colour_count > 10:
+        im = image.convert("P", palette=Image.ADAPTIVE, colors=9)
+        block_image = blocky_photo(im, width=40)
+        print(block_image)
+        ret_val = True
+    else:
+        block_image = blocky_photo(image)
+        print(
+            f"Your GitHub profile picture only has {colour_count} colours.\n"
+            "This makes me think it's the default avatar.\n"
+            "Not like this:\n",
+            block_image,
+            """Like this:
+╭───────────╮
+│  !!!!!!!  │
+│ /       \ │
+│ │  O  O │ │  ⇇ where this is a photo of your face, of course!
+│<│    v  │>│
+│  \  ─── / │
+│   \____/  │
+╰───────────╯\n"""
+            "Go to https://github.com/settings/profile and upload a photo of your face.\n"
+            "This really helps us understand who's who and be more useful in tutorials.",
+        )
+        ret_val = False
+
+    os.remove(file_name)
+    return ret_val
+
+
+def blocky_photo(image, width=20):
+    colour_map_list = list(
+        zip(
+            list(set(image.getdata())),
+            ["█", "░", "▒", "▓", "X", "#", "%", "/", ":", "*"],
+        )
+    )
+    colour_map = {x[0]: x[1] for x in colour_map_list}
+    image = image.resize((width, int(width / 2)), Image.NEAREST)
+    pixels = list(image.getdata())
+    width, height = image.size
+    block_image = ""
+    for i in range(len(pixels)):
+        block_image += colour_map[pixels[i]]
+        if (i + 1) % (width) == 0:
+            block_image += "\n "
+    return block_image
 
 
 def theTests(path_to_code_to_check="../me") -> dict:
@@ -261,11 +359,11 @@ def theTests(path_to_code_to_check="../me") -> dict:
 
     f = "requestsWorking.txt"
     p = os.path.join(path_to_code_to_check, f"set{SET_NUMBER}", f)
-    testResults.append(test(os.path.isfile(p), f + " exists"))
+    testResults.append(test(os.path.isfile(p), f"{f} exists"))
 
     f = "checkID.json"
     p = os.path.join(path_to_code_to_check, f"set{SET_NUMBER}", f)
-    testResults.append(test(os.path.isfile(p), f + " exists"))
+    testResults.append(test(os.path.isfile(p), f"{f} exists"))
 
     testResults.append(
         test(me_repo_is_clone(path_to_code_to_check), "You've forked the me repo")
@@ -275,14 +373,21 @@ def theTests(path_to_code_to_check="../me") -> dict:
     testResults.append(
         test(
             has_pushed(f, path_to_code_to_check),
-            "You've pushed your work to GitHub: " + f,
+            f"You've pushed your work to GitHub: {f}",
         )
     )
     f = "checkID.json"
     testResults.append(
         test(
             has_pushed(f, path_to_code_to_check),
-            "You've pushed your work to GitHub: " + f,
+            f"You've pushed your work to GitHub: {f}",
+        )
+    )
+
+    testResults.append(
+        test(
+            has_real_photo(path_to_code_to_check),
+            "You've got a photo for your GitHub account",
         )
     )
 

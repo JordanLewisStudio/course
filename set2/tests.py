@@ -97,6 +97,7 @@ def theTests(path_to_code_to_check="../me") -> dict:
         )
 
     ex2_runs = ex_runs(path_to_code_to_check, exerciseNumber=2, setNumber=SET_NUMBER)
+
     if not ex2_runs:
         print("Don't worry, exercise 2 comes with errors. It's your job to fix them!")
     testResults.append(test(ex2_runs, "Exercise 2: debug the file"))
@@ -115,16 +116,23 @@ def theTests(path_to_code_to_check="../me") -> dict:
         # fix it
         scenarios = [
             {"it_moves": True, "it_should_move": True, "answer": "No Problem"},
-            {"it_moves": True, "it_should_move": False, "answer": "WD-40"},
-            {"it_moves": False, "it_should_move": True, "answer": "Duct Tape"},
+            {"it_moves": True, "it_should_move": False, "answer": "Duct Tape"},
+            {"it_moves": False, "it_should_move": True, "answer": "WD-40"},
             {"it_moves": False, "it_should_move": False, "answer": "No Problem"},
         ]
         for s in scenarios:
             it = "moves" if s["it_moves"] else "does not move"
             should = "" if s["it_should_move"] else "not"
+            result = exercise3.fix_it(s["it_moves"], s["it_should_move"]) == s["answer"]
+            if not result:
+                print(
+                    f"""Trying it {it} and it {should} move """
+                    f"""and we're getting {exercise3.fix_it(s["it_moves"], s["it_should_move"])}.\n"""
+                    f"""We should be getting {s["answer"]}."""
+                )
             testResults.append(
                 test(
-                    exercise3.fix_it(s["it_moves"], s["it_should_move"]) == s["answer"],
+                    result,
                     f"Exercise 3: fix_it - it {it}, and it should {should} move",
                 )
             )
@@ -219,19 +227,21 @@ def theTests(path_to_code_to_check="../me") -> dict:
         res = exercise3.loops_4()
         if res == ten_rising_lists:
             testResults.append(test(True, "Exercise 3: loops_4 - ten rising lists"))
+        elif res is None:
+            print("Still returning None")
+            testResults.append(test(False, "Exercise 3: loops_4 - ten rising lists"))
+        elif len(res) == 10 and res[0][0] == 0:
+            print(
+                "This is looking promising, but the test is looking for "
+                "strings, not numbers. look into what str() does"
+            )
+            testResults.append(test(False, "Exercise 3: loops_4 - ten rising lists"))
         else:
-            if len(res) == 10 and res[0][0] == 0:
-                print(
-                    "This is looking promising, but the test is looking for "
-                    "strings, not numbers. look into what str() does"
-                )
-                testResults.append(
-                    test(False, "Exercise 3: loops_4 - ten rising lists")
-                )
-            else:
-                testResults.append(
-                    test(False, "Exercise 3: loops_4 - ten rising lists")
-                )
+            print(
+                f"You're giving us:\n{res}\nbut we're looking for\n{ten_rising_lists}\n"
+                "Can you see a difference? What is it?"
+            )
+            testResults.append(test(False, "Exercise 3: loops_4 - ten rising lists"))
 
         coords = [
             ["(i0, j0)", "(i0, j1)", "(i0, j2)", "(i0, j3)", "(i0, j4)"],
